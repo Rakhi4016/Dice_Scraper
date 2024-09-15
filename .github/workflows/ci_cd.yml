@@ -1,45 +1,38 @@
-name: CI/CD Pipeline for Dice_Scrape
+name: CI Pipeline for Code Validation
 
-# Trigger the workflow on any push or pull request to the main branch
+# Trigger the workflow on any push or pull request to the main or dev branch
 on:
   push:
     branches:
       - main
+      - dev
   pull_request:
     branches:
       - main
+      - dev
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    
+  test:
+    runs-on: ubuntu-latest  # Use a Linux-based runner
+
     steps:
+      # Step 1: Checkout the code from your repository
       - name: Checkout the code
         uses: actions/checkout@v3
 
+      # Step 2: Set up Python (change the version if needed)
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.x'  # Replace '3.x' with the Python version your project requires
+          python-version: '3.x'  # Specify the Python version if needed
 
+      # Step 3: Install the dependencies from requirements.txt
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      # Step 4: Run your tests to validate that the code works
       - name: Run tests
-        run: python test_all_module.py  # Replace with your actual test file
-
-  deploy:
-    runs-on: ubuntu-latest
-    needs: build
-
-    steps:
-      - name: Checkout the code
-        uses: actions/checkout@v3
-
-      - name: Deploy scraper
         run: |
-          echo "Deploying the scraper or preparing for deployment"
-          # Add your deployment steps here if needed, for example:
-          # Upload a file to S3, or run your scraper if needed.
+          python test_all_modules.py  # Replace this with your actual test file or script
