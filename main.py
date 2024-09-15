@@ -1,13 +1,39 @@
+# main.py
 import time
 from datetime import datetime
 import pandas as pd
+from driver_manager import restart_driver
+from scraper import scrape_job_details
+from database import insert_jobs_df_to_db
+import boto3
+import os
+from dotenv import load_dotenv
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import InvalidSessionIdException, WebDriverException
-from scraper import scrape_job_details
-from driver_manager import restart_driver
-from database import insert_jobs_df_to_db
+from selenium.common.exceptions import (
+    ElementClickInterceptedException, TimeoutException, NoSuchElementException, WebDriverException, 
+    NoSuchWindowException, InvalidSessionIdException
+)
+
+load_dotenv()
+
+def upload_to_s3(file_name, bucket, object_name=None):
+    aws_access_key_id = os.getenv('AWS_ACCESS_KEY_ID')
+    aws_secret_access_key = os.getenv('AWS_SECRET_ACCESS_KEY')
+    
+    s3_client = boto3.client(
+        's3',
+        aws_access_key_id=aws_access_key_id,
+        aws_secret_access_key=aws_secret_access_key
+    )
+    try:
+        if object_name is None:
+            object_name = file_name
+        s3_client.upload_file(file_name, bucket, object_name)
+        print(f"File uploaded to S3: s3://{bucket}/{object_name}")
+    except Exception as e:
+        print(f"Failed to upload file to S3: {e}")
 
 def main():
     start_time = time.time()
@@ -34,7 +60,6 @@ def main():
     time.sleep(3) 
 
     try:
-        # Click on the "Third Party" button
         third_party_option = wait.until(EC.presence_of_element_located((By.XPATH, "//span[@data-cy='facet-group-toggle' and contains(text(), 'Third Party')]//button")))
         driver.execute_script("arguments[0].click();", third_party_option)
         print("Third Party option clicked")
@@ -43,7 +68,7 @@ def main():
         driver.quit()
         return
 
-    time.sleep(3)  # Wait for the filter to apply
+    time.sleep(3)  
 
     try:
         total_jobs_element = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "span[data-cy='search-count-mobile']")))
@@ -108,17 +133,18 @@ def main():
         print("Process interrupted by user")
 
     finally:
-        # Generate CSV filename based on the current date and time
         current_datetime = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         csv_filename = f'scraped_jobs_{current_datetime}.csv'
 
-        # Save dataframe to a CSV file
         jobs_df.to_csv(csv_filename, index=False)
         print(f"Data saved to {csv_filename}")
 
-        # Insert dataframe into database
         insert_jobs_df_to_db(jobs_df)
         print("Data inserted into database")
+
+        # Upload CSV file to S3
+        s3_bucket_name = os.getenv('S3_BUCKET_NAME')
+        upload_to_s3(csv_filename, s3_bucket_name)
 
         driver.quit()
 
