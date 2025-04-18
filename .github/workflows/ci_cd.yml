@@ -9,6 +9,10 @@ jobs:
   scrape-and-upload:
     runs-on: ubuntu-latest  # Use a Linux-based runner
 
+    env:
+      DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+      DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+
     steps:
       # Step 1: Checkout the code from your repository
       - name: Checkout the code
@@ -26,7 +30,15 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Set DATE_TAG environment variable
+        run: echo "DATE_TAG=$(date +'%Y-%m-%d')" >> $GITHUB_ENV    
+
       # Step 4: Run your tests to validate that the code works
       - name: Run main
         run: |
           python main.py  # Replace this with your actual test file or script
+
+      - name: Upload CSV to Workspace
+        run: |
+          FILE_NAME="scraped_jobs_${{ env.DATE_TAG }}.csv"
+          databricks workspace import --language PYTHON --format SOURCE "$FILE_NAME" "/Shared/$FILE_NAME"    
