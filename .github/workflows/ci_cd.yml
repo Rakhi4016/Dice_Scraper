@@ -1,9 +1,7 @@
-name: CI Pipeline for Scraping job
+name: CI Pipeline for Scraping Job
 
-# Trigger the workflow on any push or pull request to the main or dev branch
 on:
   workflow_dispatch:
-  
 
 jobs:
   scrape-and-upload:
@@ -18,11 +16,11 @@ jobs:
       - name: Checkout the code
         uses: actions/checkout@v3
 
-      # Step 2: Set up Python (change the version if needed)
+      # Step 2: Set up Python
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.10'  # Specify the Python version if needed
+          python-version: '3.10'
 
       # Step 3: Install the dependencies from requirements.txt
       - name: Install dependencies
@@ -30,15 +28,17 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      # Step 4: Set DATE_TAG environment variable
       - name: Set DATE_TAG environment variable
-        run: echo "DATE_TAG=$(date +'%Y-%m-%d')" >> $GITHUB_ENV    
+        run: echo "DATE_TAG=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
 
-      # Step 4: Run your tests to validate that the code works
-      - name: Run main
+      # Step 5: Run your main script
+      - name: Run scraper
         run: |
-          python main.py  # Replace this with your actual test file or script
+          python main.py
 
+      # Step 6: Upload CSV to Workspace (Note: This command assumes it's a notebook, not a CSV)
       - name: Upload CSV to Workspace
         run: |
           FILE_NAME="scraped_jobs_${{ env.DATE_TAG }}.csv"
-          databricks workspace import --language PYTHON --format SOURCE "$FILE_NAME" "/Shared/$FILE_NAME"    
+          databricks workspace import --language PYTHON --format SOURCE "$FILE_NAME" "/Shared/$FILE_NAME"
