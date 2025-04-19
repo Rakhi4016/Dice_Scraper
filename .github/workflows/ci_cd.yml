@@ -36,7 +36,7 @@ jobs:
           pip install \
             requests \
             pandas \
-            selenium \
+            selenium>=4.8.0 \
             snowflake-connector-python \
             python-dotenv \
             databricks-cli
@@ -48,24 +48,7 @@ jobs:
           wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
           sudo apt install -y ./google-chrome-stable_current_amd64.deb
 
-      - name: 🕷️ Install ChromeDriver (matching Chrome)
-        run: |
-          CHROME_VERSION=$(google-chrome --version \
-            | grep -oP '\d+\.\d+\.\d+' \
-            | head -1)
-          MAJOR_VERSION=$(echo "$CHROME_VERSION" | cut -d. -f1)
-          CHROMEDRIVER_VERSION=$(curl -sS \
-            "https://chromedriver.storage.googleapis.com/LATEST_RELEASE_$MAJOR_VERSION")
-
-          echo "Detected Chrome version: $CHROME_VERSION"
-          echo "Using ChromeDriver version: $CHROMEDRIVER_VERSION"
-
-          wget -O chromedriver.zip \
-            "https://chromedriver.storage.googleapis.com/${CHROMEDRIVER_VERSION}/chromedriver_linux64.zip"
-          unzip chromedriver.zip
-          sudo mv chromedriver /usr/local/bin/
-          sudo chmod +x /usr/local/bin/chromedriver
-
+      
       - name: 🔍 Test Snowflake Connection
         run: |
           python <<EOF
