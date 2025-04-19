@@ -69,6 +69,9 @@ jobs:
       - name: 🚀 Run scraper and upload CSV to stage
         run: python main.py
 
+      - name: 📅 Set DATE_TAG
+        run: echo "DATE_TAG=$(date +'%Y-%m-%d_%H-%M-%S')" >> $GITHUB_ENV  
+
       - name: Upload CSV to Workspace
         run: |
           FILE_NAME="scraped_jobs_${{ env.DATE_TAG }}.csv"

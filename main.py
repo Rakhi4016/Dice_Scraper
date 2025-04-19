@@ -4,7 +4,7 @@ from datetime import datetime
 import pandas as pd
 from driver_manager import restart_driver
 from scraper import scrape_job_details
-from database import insert_jobs_df_to_db
+from database import insert_jobs_df_to_snowflake
 import boto3
 import os
 from dotenv import load_dotenv

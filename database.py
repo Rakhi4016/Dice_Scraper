@@ -9,13 +9,13 @@ SF_USER      = os.getenv('SF_USER')
 SF_PASSWORD  = os.getenv('SF_PASSWORD')
 SF_ACCOUNT   = os.getenv('SF_ACCOUNT')
 SF_WAREHOUSE = os.getenv('SF_WAREHOUSE')
-SF_ROLE = os.getenv("SF_ROLE")
-# We’ll explicitly connect to the ACCOUNT-level; database/schema will be created below
+SF_ROLE      = os.getenv('SF_ROLE')      # optional
+
 
 def insert_jobs_df_to_snowflake(jobs_df):
     """
-    Creates dev_blue database, bronze schema, Job_listings table (if they don't exist),
-    then inserts all rows from jobs_df into Job_listings.
+    Creates dev_blue database, bronze schema, and Job_listings table (if they don't exist),
+    bulk-loads new records via a temporary table and MERGE to skip existing position_ids.
     """
     ctx = None
     try:
@@ -24,19 +24,16 @@ def insert_jobs_df_to_snowflake(jobs_df):
             user=SF_USER,
             password=SF_PASSWORD,
             account=SF_ACCOUNT,
-            warehouse=SF_WAREHOUSE
+            warehouse=SF_WAREHOUSE,
+            role=SF_ROLE
         )
         cs = ctx.cursor()
 
-        # 1) Create database and switch to it
+        # Create database, schema, and table if not exists
         cs.execute("CREATE DATABASE IF NOT EXISTS dev_blue")
         cs.execute("USE DATABASE dev_blue")
-
-        # 2) Create schema and switch to it
         cs.execute("CREATE SCHEMA IF NOT EXISTS bronze")
         cs.execute("USE SCHEMA bronze")
-
-        # 3) Create table if not exists
         cs.execute("""
             CREATE TABLE IF NOT EXISTS Job_listings (
               title            VARCHAR,
@@ -53,25 +50,46 @@ def insert_jobs_df_to_snowflake(jobs_df):
             )
         """)
 
-        # 4) Insert rows
-        insert_sql = """
-            INSERT INTO Job_listings
-              (title, location, date_posted, work_setting, work_mode,
-               job_description, position_id, company_name, company_url, job_url, scraped_date)
+        # Return early if there's no data
+        if jobs_df.empty:
+            print("DEBUG: No data to insert")
+            return
+
+        # 1) Create a temporary table for bulk load
+        cs.execute("CREATE OR REPLACE TEMPORARY TABLE tmp_job_listings LIKE Job_listings")
+
+        # 2) Bulk load into temp table
+        insert_temp_sql = """
+            INSERT INTO tmp_job_listings
+            (title, location, date_posted, work_setting, work_mode,
+             job_description, position_id, company_name, company_url, job_url, scraped_date)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
-        for idx, row in jobs_df.iterrows():
-            record = (
-                row['title'], row['location'], row['date_posted'],
-                row['work_setting'], row['work_mode'], row['job_description'],
-                row['position_id'], row['company_name'], row['company_url'],
-                row['job_url'], row['scraped_date']
-            )
-            print(f"DEBUG: Inserting record {idx}")
-            cs.execute(insert_sql, record)
+        records = [(
+            row['title'], row['location'], row['date_posted'],
+            row['work_setting'], row['work_mode'], row['job_description'],
+            row['position_id'], row['company_name'], row['company_url'],
+            row['job_url'], row['scraped_date']
+        ) for _, row in jobs_df.iterrows()]
+
+        print(f"DEBUG: Inserting {len(records)} rows into temporary table")
+        cs.executemany(insert_temp_sql, records)
+
+        # 3) Merge new rows into the main table, skipping existing position_ids
+        merge_sql = """
+            MERGE INTO Job_listings AS tgt
+            USING tmp_job_listings AS src
+            ON tgt.position_id = src.position_id
+            WHEN NOT MATCHED THEN
+              INSERT (title, location, date_posted, work_setting, work_mode,
+                      job_description, position_id, company_name, company_url, job_url, scraped_date)
+              VALUES (src.title, src.location, src.date_posted, src.work_setting, src.work_mode,
+                      src.job_description, src.position_id, src.company_name, src.company_url, src.job_url, src.scraped_date)
+        """
+        cs.execute(merge_sql)
 
         ctx.commit()
-        print("DEBUG: Snowflake commit successful")
+        print("DEBUG: Merge complete, new records inserted")
 
     except Exception as e:
         print("❌ Failed to insert records into Snowflake:", e)
