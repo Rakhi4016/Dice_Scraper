@@ -32,11 +32,17 @@ def main():
     ])
 
     try:
-        today_option = wait.until(EC.presence_of_element_located((By.XPATH, "//button[@data-cy='posted-date-option' and contains(text(), 'Today')]")))
-        driver.execute_script("arguments[0].click();", today_option)
-        print("Today option clicked directly")
+    # Wait for and click the “Last 7 Days” filter
+        last7_option = wait.until(
+            EC.element_to_be_clickable(
+                (By.XPATH,
+                "//button[@data-cy='posted-date-option' and contains(normalize-space(.), 'Last 7 Days')]")
+            )
+        )
+        driver.execute_script("arguments[0].click();", last7_option)
+        print("Last 7 Days option clicked")
     except Exception as e:
-        print(f"Failed to click 'Today' option: {e}")
+        print(f"Failed to click 'Last 7 Days' option: {e}")
         driver.quit()
         return
 
