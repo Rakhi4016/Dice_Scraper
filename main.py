@@ -18,23 +18,6 @@ from selenium.common.exceptions import (
 
 load_dotenv()
 
-def upload_to_s3(file_name, bucket, object_name=None):
-    aws_access_key_id = os.getenv('AWS_ACCESS_KEY_ID')
-    aws_secret_access_key = os.getenv('AWS_SECRET_ACCESS_KEY')
-    
-    s3_client = boto3.client(
-        's3',
-        aws_access_key_id=aws_access_key_id,
-        aws_secret_access_key=aws_secret_access_key
-    )
-    try:
-        if object_name is None:
-            object_name = file_name
-        s3_client.upload_file(file_name, bucket, object_name)
-        print(f"File uploaded to S3: s3://{bucket}/{object_name}")
-    except Exception as e:
-        print(f"Failed to upload file to S3: {e}")
-
 def main():
     start_time = time.time()
     
@@ -133,23 +116,19 @@ def main():
         print("Process interrupted by user")
 
     finally:
-        current_datetime = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        csv_filename = f'scraped_jobs_{current_datetime}.csv'
-
+        # 1) Write local CSV
+        current_dt = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        csv_filename = f'scraped_jobs_{current_dt}.csv'
         jobs_df.to_csv(csv_filename, index=False)
-        print(f"Data saved to {csv_filename}")
+        print(f"✅ Data saved locally: {csv_filename}")
 
-        insert_jobs_df_to_db(jobs_df)
-        print("Data inserted into database")
+        # 2) Insert into Snowflake
+        insert_jobs_df_to_snowflake(jobs_df)
 
-        # Upload CSV file to S3
-        s3_bucket_name = os.getenv('S3_BUCKET_NAME')
-        upload_to_s3(csv_filename, s3_bucket_name)
-
+        # 3) Tear down
         driver.quit()
-
-        end_time = time.time()
-        print(f"Total time taken: {end_time - start_time:.2f} seconds")
+        elapsed = time.time() - start_time
+        print(f"Total time taken: {elapsed:.2f} seconds")
 
 if __name__ == "__main__":
     main()

@@ -1,45 +1,82 @@
-import psycopg2
-import pandas as pd
-from dotenv import load_dotenv
 import os
+import snowflake.connector
+from dotenv import load_dotenv
 
 # Load environment variables from .env file
 load_dotenv()
 
-DB_USER = os.getenv('DB_USER')
-DB_PASSWORD = os.getenv('DB_PASSWORD')
-DB_HOST = os.getenv('DB_HOST')
-DB_PORT = os.getenv('DB_PORT')
-DB_NAME = os.getenv('DB_NAME')
+SF_USER      = os.getenv('SF_USER')
+SF_PASSWORD  = os.getenv('SF_PASSWORD')
+SF_ACCOUNT   = os.getenv('SF_ACCOUNT')
+SF_WAREHOUSE = os.getenv('SF_WAREHOUSE')
+SF_ROLE = os.getenv("SF_ROLE")
+# We’ll explicitly connect to the ACCOUNT-level; database/schema will be created below
 
-def insert_jobs_df_to_db(jobs_df):
-    connection = None  # Initialize connection to None before the try block
-    print("DEBUG: Entered insert_jobs_df_to_db")  # Debugging print
-
+def insert_jobs_df_to_snowflake(jobs_df):
+    """
+    Creates dev_blue database, bronze schema, Job_listings table (if they don't exist),
+    then inserts all rows from jobs_df into Job_listings.
+    """
+    ctx = None
     try:
-        print("DEBUG: Attempting to connect to the database...")  # Debugging print before connection
-        connection = psycopg2.connect(...)  # Replace with your actual connection details
-        cursor = connection.cursor()
-        
-        for index, row in jobs_df.iterrows():
-            postgres_insert_query = """INSERT INTO job_details (title, location, date_posted, work_setting, work_mode, 
-                                        job_description, position_id, company_name, company_url, job_url, scraped_date) 
-                                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"""
-            record_to_insert = (
-                row['title'], row['location'], row['date_posted'], row['work_setting'], row['work_mode'], 
-                row['job_description'], row['position_id'], row['company_name'], row['company_url'], 
+        print("DEBUG: Connecting to Snowflake…")
+        ctx = snowflake.connector.connect(
+            user=SF_USER,
+            password=SF_PASSWORD,
+            account=SF_ACCOUNT,
+            warehouse=SF_WAREHOUSE
+        )
+        cs = ctx.cursor()
+
+        # 1) Create database and switch to it
+        cs.execute("CREATE DATABASE IF NOT EXISTS dev_blue")
+        cs.execute("USE DATABASE dev_blue")
+
+        # 2) Create schema and switch to it
+        cs.execute("CREATE SCHEMA IF NOT EXISTS bronze")
+        cs.execute("USE SCHEMA bronze")
+
+        # 3) Create table if not exists
+        cs.execute("""
+            CREATE TABLE IF NOT EXISTS Job_listings (
+              title            VARCHAR,
+              location         VARCHAR,
+              date_posted      VARCHAR,
+              work_setting     VARCHAR,
+              work_mode        VARCHAR,
+              job_description  VARCHAR,
+              position_id      VARCHAR,
+              company_name     VARCHAR,
+              company_url      VARCHAR,
+              job_url          VARCHAR,
+              scraped_date     VARCHAR
+            )
+        """)
+
+        # 4) Insert rows
+        insert_sql = """
+            INSERT INTO Job_listings
+              (title, location, date_posted, work_setting, work_mode,
+               job_description, position_id, company_name, company_url, job_url, scraped_date)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """
+        for idx, row in jobs_df.iterrows():
+            record = (
+                row['title'], row['location'], row['date_posted'],
+                row['work_setting'], row['work_mode'], row['job_description'],
+                row['position_id'], row['company_name'], row['company_url'],
                 row['job_url'], row['scraped_date']
             )
-            print(f"DEBUG: Inserting record {record_to_insert}")  # Debugging print for each record
-            cursor.execute(postgres_insert_query, record_to_insert)
-        
-        connection.commit()
-        print("DEBUG: Commit successful")  # Debugging print after commit
+            print(f"DEBUG: Inserting record {idx}")
+            cs.execute(insert_sql, record)
 
-    except (Exception, psycopg2.Error) as error:
-        print("Failed to insert records into job_details table", error)
+        ctx.commit()
+        print("DEBUG: Snowflake commit successful")
+
+    except Exception as e:
+        print("❌ Failed to insert records into Snowflake:", e)
 
     finally:
-        if connection is not None:
-            print("DEBUG: Closing the connection")  # Debugging print for closing connection
-            connection.close()
+        if ctx:
+            print("DEBUG: Closing Snowflake connection")
+            ctx.close()
