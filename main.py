@@ -117,7 +117,7 @@ def main():
 
     finally:
         # 1) Write local CSV
-        current_dt = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        current_dt = datetime.now().strftime("%Y-%m-%d")
         csv_filename = f'scraped_jobs_{current_dt}.csv'
         jobs_df.to_csv(csv_filename, index=False)
         print(f"✅ Data saved locally: {csv_filename}")
