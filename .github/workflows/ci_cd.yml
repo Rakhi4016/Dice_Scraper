@@ -81,14 +81,14 @@ jobs:
           FILE_NAME="scraped_jobs_${{ env.DATE_TAG }}.csv"
           databricks workspace import --language PYTHON --format SOURCE "$FILE_NAME" "/Shared/$FILE_NAME"  
 
-      - name: ⚙️ Configure AWS credentials
+      - name:  Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }} 
 
-      - name: 📤 Upload CSV to S3
+      - name:  Upload CSV to S3
         run: |
           FILE_NAME="scraped_jobs_${{ env.DATE_TAG }}.csv"
           aws s3 cp "$FILE_NAME" "s3://my-dice-scraper/input/$FILE_NAME"    
