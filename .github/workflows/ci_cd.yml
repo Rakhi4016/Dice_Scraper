@@ -73,7 +73,7 @@ jobs:
         run: python main.py
 
       - name: 📅 Set DATE_TAG
-        run: echo "DATE_TAG=$(date +'%Y-%m-%d_%H-%M-%S')" >> $GITHUB_ENV  
+        run: echo "DATE_TAG=$(date +'%Y-%m-%d')" >> $GITHUB_ENV  
 
       - name: Upload CSV to Workspace
         run: |
