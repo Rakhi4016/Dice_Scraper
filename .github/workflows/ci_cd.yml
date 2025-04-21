@@ -7,6 +7,9 @@ on:
       - dev
       - 'feature/**'
   workflow_dispatch:
+  schedule:
+    # Runs every day at 23:00 UTC (which is 7:00 PM Eastern Time during DST)
+    - cron: '0 23 * * *'
 
 jobs:
   scrape-and-upload:
