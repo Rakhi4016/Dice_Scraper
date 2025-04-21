@@ -43,7 +43,7 @@ jobs:
             snowflake-connector-python \
             python-dotenv \
             databricks-cli \
-            aws cli
+            awscli
 
       - name:  Install Chrome
         run: |
