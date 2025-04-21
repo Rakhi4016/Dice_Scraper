@@ -25,15 +25,15 @@ jobs:
       DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
 
     steps:
-      - name: 📥 Checkout code
+      - name:  Checkout code
         uses: actions/checkout@v3
 
-      - name: 🐍 Set up Python
+      - name:  Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: 3.12
 
-      - name: 📦 Install Python dependencies
+      - name:  Install Python dependencies
         run: |
           pip install --upgrade pip
           pip install \
@@ -42,9 +42,10 @@ jobs:
             selenium>=4.8.0 \
             snowflake-connector-python \
             python-dotenv \
-            databricks-cli
+            databricks-cli \
+            aws cli
 
-      - name: 🖥️ Install Chrome
+      - name:  Install Chrome
         run: |
           sudo apt-get update
           sudo apt-get install -y wget curl unzip
@@ -52,7 +53,7 @@ jobs:
           sudo apt install -y ./google-chrome-stable_current_amd64.deb
 
       
-      - name: 🔍 Test Snowflake Connection
+      - name:  Test Snowflake Connection
         run: |
           python <<EOF
           import os
@@ -65,17 +66,29 @@ jobs:
               warehouse=os.getenv('SF_WAREHOUSE'),
               role=os.getenv('SF_ROLE')
           )
-          print('✅ Snowflake connection successful!')
+          print(' Snowflake connection successful!')
           conn.close()
           EOF
 
-      - name: 🚀 Run scraper and upload CSV to stage
+      - name:  Run scraper and upload CSV to stage
         run: python main.py
 
-      - name: 📅 Set DATE_TAG
+      - name:  Set DATE_TAG
         run: echo "DATE_TAG=$(date +'%Y-%m-%d')" >> $GITHUB_ENV  
 
       - name: Upload CSV to Workspace
         run: |
           FILE_NAME="scraped_jobs_${{ env.DATE_TAG }}.csv"
           databricks workspace import --language PYTHON --format SOURCE "$FILE_NAME" "/Shared/$FILE_NAME"  
+
+      - name: ⚙️ Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }} 
+
+      - name: 📤 Upload CSV to S3
+        run: |
+          FILE_NAME="scraped_jobs_${{ env.DATE_TAG }}.csv"
+          aws s3 cp "$FILE_NAME" "s3://my-dice-scraper/input/$FILE_NAME"    
