@@ -85,34 +85,34 @@ Manual runs using workflow_dispatch
 
 A daily scheduled run at 23:00 UTC (7:00 PM Eastern Time)
 
-# Workflow Summary
+## Workflow Summary
 The pipeline performs the following steps:
 
-# Checkout Code
+## Checkout Code
 Clones the repository to the GitHub runner.
 
-# Set up Python Environment
+## Set up Python Environment
 Installs Python 3.12 and necessary dependencies listed in requirements.txt.
 
-# Install Chrome
+## Install Chrome
 Installs Google Chrome for use with Selenium.
 
-# Test Snowflake Connection
+## Test Snowflake Connection
 Verifies the Snowflake connection using environment secrets.
 
-# Run Scraper
+## Run Scraper
 Executes main.py, which scrapes job details and saves them to a CSV file and Snowflake.
 
-# Tag Output File with Date
-Adds a timestamp to the filename for versioning.
+## Tag Output File with Date
+Adds a date to the filename for versioning.
 
-# Upload to Databricks Workspace
+## Upload to Databricks Workspace
 Uploads the resulting CSV to the Databricks workspace for further processing.
 
-# Upload to AWS S3
+## Upload to AWS S3
 Transfers the CSV file to an S3 bucket (s3://my-dice-scraper/input/).
 
-# Environment Variables
+## Environment Variables
 Secrets used in the pipeline are securely stored in GitHub Actions Secrets:
 
 SF_USER, SF_PASSWORD, SF_ACCOUNT, SF_WAREHOUSE, SF_ROLE: Snowflake credentials
