@@ -1,6 +1,6 @@
 # Job Scraper
 
-This project is a job scraper that collects all third party job details from Dice.com and stores as a dataframe >>CSV file and then loaded into PostgreSQL database. The scraper uses Selenium for web scraping and the psycopg2 library for database operations.
+This project is a job scraper that collects all third party job details from Dice.com and stores as a dataframe >>CSV file and then loaded into Snowflake database and the upload the csv to S3. The scraper uses Selenium for web scraping and the psycopg2 library for database operations.
 
 ## Table of Contents
 - [Installation](#installation)
@@ -25,11 +25,11 @@ This project is a job scraper that collects all third party job details from Dic
 4. Set up the environment variables
    Create a .env file in the root directory of the project and add the following lines, replacing the placeholder values with your actual database credentials:
 
-   DB_USER=your_username
-   DB_PASSWORD=your_password
-   DB_HOST=your_host
-   DB_PORT=your_port
-   DB_NAME=your_database_name
+   SF_USER=username
+   SF_PASSWORD=your password
+   SF_ACCOUNT=your account 
+   SF_WAREHOUSE=your warehouse
+   SF_ROLE=your role
 
 5. Download the ChromeDriver
    Make sure you have the ChromeDriver installed and it's in your system's PATH.
@@ -53,18 +53,18 @@ python main.py
 ## Environment Variables
 
 The project requires a .env file in the root directory with the following variables:
-* DB_USER: PostgreSQL username
-* DB_PASSWORD: PostgreSQL password
-* DB_HOST: PostgreSQL host
-* DB_PORT: PostgreSQL port
-* DB_NAME: PostgreSQL database name
+* SF_USER: Snowflake username
+* SF_PASSWORD: Snowflake password
+* SF_ACCOUNT: Snowflake account number
+* SF_WAREHOUSE: Snowflake virtual warehouse
+* SF_ROLE: Snowflake role name
 
 ## Modules
 
 database.py
 Contains functions for database operations:
-* get_db_connection(): Establishes a connection to the PostgreSQL database.
-* insert_job_details(job_details): Inserts job details into the job_details table.
+* snowflake.connector: Establishes a connection to the Snowflake database.
+* insert_jobs_df_to_snowflake(jobs_df): Inserts job details into the job_details table.
 
 scraper.py
 Contains functions for web scraping:
